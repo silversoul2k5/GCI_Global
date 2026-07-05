@@ -1,4 +1,4 @@
-<img width="1581" height="656" alt="wmremove-transformed" src="https://github.com/user-attachments/assets/36e50ec3-8041-4bbb-998c-24f09e17eb42" /># Signal — Churn Retention Platform
+# Signal — Churn Retention Platform
 
 A working end-to-end demo: a company dashboard that shows which customers
 are at high risk of churning, and a customer-facing mobile app that
