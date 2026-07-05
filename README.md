@@ -1,4 +1,4 @@
-# Signal — Churn Retention Platform
+<img width="1581" height="656" alt="wmremove-transformed" src="https://github.com/user-attachments/assets/36e50ec3-8041-4bbb-998c-24f09e17eb42" /># Signal — Churn Retention Platform
 
 A working end-to-end demo: a company dashboard that shows which customers
 are at high risk of churning, and a customer-facing mobile app that
@@ -17,6 +17,12 @@ customers) from the Final Assignment package.
                                 │  offers table         │        └─────────────────────┘
                                 └──────────────────────┘
 ```
+
+<img width="1581" height="656" alt="wmremove-transformed" src="https://github.com/user-attachments/assets/90dd7d45-2e75-4914-a88f-ad93ff5cce42" />
+
+
+<img width="637" height="468" alt="image" src="https://github.com/user-attachments/assets/542cdee1-5bd1-4c2e-bb1e-3d52981cbe08" />
+
 
 Both clients are just callers of the same API. Sending an offer on the
 website inserts a row in the `offers` table; the phone app polls
