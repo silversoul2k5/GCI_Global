@@ -1,0 +1,102 @@
+[
+  {
+    "feature": "eqpdays",
+    "importance": 0.035278
+  },
+  {
+    "feature": "months",
+    "importance": 0.033551
+  },
+  {
+    "feature": "refurb_new",
+    "importance": 0.026269
+  },
+  {
+    "feature": "mou_Mean",
+    "importance": 0.020289
+  },
+  {
+    "feature": "hnd_price",
+    "importance": 0.019754
+  },
+  {
+    "feature": "asl_flag",
+    "importance": 0.018025
+  },
+  {
+    "feature": "totmrc_Mean",
+    "importance": 0.016187
+  },
+  {
+    "feature": "change_mou",
+    "importance": 0.015505
+  },
+  {
+    "feature": "uniqsubs",
+    "importance": 0.015228
+  },
+  {
+    "feature": "crclscod",
+    "importance": 0.013799
+  },
+  {
+    "feature": "ovrrev_Mean",
+    "importance": 0.013746
+  },
+  {
+    "feature": "creditcd",
+    "importance": 0.013525
+  },
+  {
+    "feature": "avgqty",
+    "importance": 0.013344
+  },
+  {
+    "feature": "lor",
+    "importance": 0.012638
+  },
+  {
+    "feature": "mou_cvce_Mean",
+    "importance": 0.012448
+  },
+  {
+    "feature": "avgrev",
+    "importance": 0.012152
+  },
+  {
+    "feature": "vceovr_Mean",
+    "importance": 0.011552
+  },
+  {
+    "feature": "avgmou",
+    "importance": 0.01123
+  },
+  {
+    "feature": "avg3mou",
+    "importance": 0.011109
+  },
+  {
+    "feature": "ethnic",
+    "importance": 0.011013
+  },
+  {
+    "feature": "totcalls",
+    "importance": 0.010772
+  },
+  {
+    "feature": "ovrmou_Mean",
+    "importance": 0.010708
+  },
+  {
+    "feature": "change_rev",
+    "importance": 0.010686
+  },
+  {
+    "feature": "drop_vce_Mean",
+    "importance": 0.010483
+  },
+  {
+    "feature": "dualband",
+    "importance": 0.01036
+  }
+]

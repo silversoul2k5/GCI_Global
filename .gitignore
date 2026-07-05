@@ -1,0 +1,17 @@
+# Python virtual environment
+.venv/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Node.js dependencies
+node_modules/
+
+# Expo build artifacts and local cache
+.expo/
+dist/
+
+# OS-specific files
+.DS_Store
+Thumbs.db

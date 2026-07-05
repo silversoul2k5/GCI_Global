@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Signal — Retention Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg: #12161d;
+    --surface: #1a2029;
+    --surface-2: #212837;
+    --border: #2a3040;
+    --text: #e9ebf0;
+    --text-dim: #8b93a3;
+    --text-faint: #5c6577;
+    --accent: #5b8def;
+    --accent-dim: #3a5a94;
+    --high: #e8604a;
+    --high-bg: rgba(232,96,74,0.12);
+    --medium: #e8a23c;
+    --medium-bg: rgba(232,162,60,0.12);
+    --low: #45b58c;
+    --low-bg: rgba(69,181,140,0.12);
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  .display{ font-family:'Space Grotesk', sans-serif; }
+
+  /* ---------- Layout ---------- */
+  #app{ display:flex; min-height:100vh; }
+  aside{
+    width:240px; flex-shrink:0; background:var(--surface);
+    border-right:1px solid var(--border); padding:24px 18px;
+    display:flex; flex-direction:column; gap:28px;
+  }
+  main{ flex:1; padding:28px 32px; max-width:1300px; }
+
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{
+    width:30px; height:30px; border-radius:8px;
+    background:linear-gradient(135deg, var(--accent), var(--low));
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:14px; color:#0b0e13;
+  }
+  .brand-name{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:17px; letter-spacing:0.2px;}
+  .brand-sub{ font-size:11px; color:var(--text-faint); margin-top:-2px;}
+
+  nav.filters{ display:flex; flex-direction:column; gap:4px; }
+  .nav-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-faint); margin:6px 0 4px 4px;}
+  .filter-btn{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:9px 12px; border-radius:8px; cursor:pointer; border:1px solid transparent;
+    color:var(--text-dim); font-size:13.5px; transition:background .12s;
+  }
+  .filter-btn:hover{ background:var(--surface-2); color:var(--text); }
+  .filter-btn.active{ background:var(--surface-2); color:var(--text); border-color:var(--border); font-weight:500;}
+  .filter-btn .count{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--text-faint); }
+  .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:8px; }
+  .dot.high{ background:var(--high); } .dot.medium{ background:var(--medium); } .dot.low{ background:var(--low); } .dot.all{ background:var(--accent);}
+
+  .status-pill{
+    margin-top:auto; display:flex; align-items:center; gap:8px;
+    font-size:12px; color:var(--text-faint); padding:10px 12px;
+    background:var(--surface-2); border-radius:8px; border:1px solid var(--border);
+  }
+  .status-dot{ width:7px; height:7px; border-radius:50%; background:var(--text-faint); flex-shrink:0;}
+  .status-dot.ok{ background:var(--low); box-shadow:0 0 6px var(--low); }
+  .status-dot.down{ background:var(--high); box-shadow:0 0 6px var(--high); }
+
+  .api-config{ font-size:11px; color:var(--text-faint); }
+  .api-config input{
+    width:100%; margin-top:5px; background:var(--bg); border:1px solid var(--border);
+    color:var(--text-dim); font-family:'JetBrains Mono',monospace; font-size:11px;
+    padding:6px 8px; border-radius:6px;
+  }
+
+  /* ---------- Header ---------- */
+  header{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:22px; }
+  h1{ font-family:'Space Grotesk',sans-serif; font-size:22px; margin:0; font-weight:600;}
+  header p{ color:var(--text-dim); font-size:13px; margin:4px 0 0; }
+  .search-box{
+    display:flex; align-items:center; gap:8px; background:var(--surface);
+    border:1px solid var(--border); border-radius:8px; padding:8px 12px; width:220px;
+  }
+  .search-box input{ background:none; border:none; outline:none; color:var(--text); font-size:13px; width:100%; font-family:'JetBrains Mono',monospace;}
+  .search-box input::placeholder{ color:var(--text-faint); }
+
+  /* ---------- KPI cards ---------- */
+  .kpi-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+  .kpi{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:16px 18px;
+  }
+  .kpi .label{ font-size:11.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.06em; }
+  .kpi .value{ font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:600; margin-top:6px; }
+  .kpi .value.high{ color:var(--high); }
+  .kpi .sub{ font-size:11.5px; color:var(--text-faint); margin-top:2px;}
+
+  /* ---------- Charts ---------- */
+  .chart-row{ display:grid; grid-template-columns:1fr 1fr 1.3fr; gap:14px; margin-bottom:22px; }
+  .panel{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px;}
+  .panel h3{ font-size:12.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-faint); margin:0 0 12px; font-weight:600;}
+  .chart-wrap{ height:160px; position:relative; }
+
+  /* ---------- Table ---------- */
+  .table-panel{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .table-header{ display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid var(--border);}
+  table{ width:100%; border-collapse:collapse; }
+  thead th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--text-faint); padding:10px 18px; border-bottom:1px solid var(--border); font-weight:600;
+  }
+  tbody td{ padding:12px 18px; border-bottom:1px solid var(--border); font-size:13.5px; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover{ background:var(--surface-2); cursor:pointer; }
+  .cid{ font-family:'JetBrains Mono',monospace; color:var(--text-dim); }
+
+  /* signal-bar risk visual — the whole point: a customer "losing signal" with the company */
+  .signal{ display:inline-flex; align-items:flex-end; gap:2px; height:16px; vertical-align:middle; margin-right:8px;}
+  .signal i{ width:3px; display:block; background:var(--border); border-radius:1px; }
+  .signal i:nth-child(1){ height:5px; } .signal i:nth-child(2){ height:8px; }
+  .signal i:nth-child(3){ height:11px; } .signal i:nth-child(4){ height:14px; }
+  .signal.high i:nth-child(1){ background:var(--high); }
+  .signal.medium i:nth-child(1), .signal.medium i:nth-child(2){ background:var(--medium); }
+  .signal.low i{ background:var(--low); }
+  .risk-pct{ font-family:'JetBrains Mono',monospace; font-size:12.5px; }
+  .risk-pct.high{ color:var(--high); } .risk-pct.medium{ color:var(--medium); } .risk-pct.low{ color:var(--low); }
+
+  .badge{ font-size:11px; padding:3px 9px; border-radius:99px; font-weight:600; letter-spacing:0.02em; }
+  .badge.high{ background:var(--high-bg); color:var(--high); }
+  .badge.medium{ background:var(--medium-bg); color:var(--medium); }
+  .badge.low{ background:var(--low-bg); color:var(--low); }
+  .badge.sent{ background:rgba(91,141,239,0.12); color:var(--accent); }
+  .badge.redeemed{ background:var(--low-bg); color:var(--low); }
+
+  .btn{
+    background:var(--accent); color:#0b0e13; border:none; padding:8px 14px;
+    border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer; transition:filter .12s;
+    font-family:'Inter',sans-serif;
+  }
+  .btn:hover{ filter:brightness(1.1); }
+  .btn.ghost{ background:none; border:1px solid var(--border); color:var(--text-dim); }
+  .btn.ghost:hover{ background:var(--surface-2); color:var(--text); }
+  .btn:disabled{ opacity:0.5; cursor:not-allowed; }
+
+  .tabs{ display:flex; gap:4px; margin-bottom:16px; }
+  .tab{ padding:8px 14px; font-size:13px; color:var(--text-dim); cursor:pointer; border-bottom:2px solid transparent;}
+  .tab.active{ color:var(--text); border-bottom-color:var(--accent); font-weight:500;}
+
+  .pager{ display:flex; align-items:center; gap:10px; padding:12px 18px; font-size:12.5px; color:var(--text-faint);}
+
+  /* ---------- Slide-over ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(6,8,12,0.6); backdrop-filter:blur(2px);
+    display:none; align-items:stretch; justify-content:flex-end; z-index:50;
+  }
+  .overlay.open{ display:flex; }
+  .drawer{
+    width:400px; background:var(--surface); border-left:1px solid var(--border);
+    padding:24px; overflow-y:auto; display:flex; flex-direction:column; gap:18px;
+  }
+  .drawer-head{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .close-btn{ background:none; border:none; color:var(--text-faint); font-size:20px; cursor:pointer; line-height:1;}
+  .field-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; font-size:12.5px; }
+  .field-grid .k{ color:var(--text-faint); } .field-grid .v{ font-family:'JetBrains Mono',monospace; color:var(--text);}
+
+  .offer-presets{ display:flex; flex-direction:column; gap:8px; }
+  .preset{
+    text-align:left; padding:10px 12px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text); cursor:pointer; font-size:13px;
+  }
+  .preset:hover{ border-color:var(--accent); }
+  .preset.selected{ border-color:var(--accent); background:rgba(91,141,239,0.08); }
+  .preset .t{ font-weight:600; font-size:12.5px;} .preset .d{ color:var(--text-dim); font-size:11.5px; margin-top:2px;}
+
+  textarea{
+    width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:10px; font-family:'Inter',sans-serif; font-size:13px; resize:vertical; min-height:64px;
+  }
+  .offer-log{ display:flex; flex-direction:column; gap:8px; }
+  .offer-log .item{ padding:10px 12px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); font-size:12px;}
+  .offer-log .item .top{ display:flex; justify-content:space-between; margin-bottom:4px; }
+  .toast{
+    position:fixed; bottom:24px; right:24px; background:var(--surface-2); border:1px solid var(--low);
+    color:var(--text); padding:12px 16px; border-radius:8px; font-size:13px; display:none; z-index:99;
+    box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  }
+  .toast.show{ display:block; }
+  .empty{ padding:40px; text-align:center; color:var(--text-faint); font-size:13px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside>
+    <div class="brand">
+      <div class="brand-mark">S</div>
+      <div>
+        <div class="brand-name">Signal</div>
+        <div class="brand-sub">Retention console</div>
+      </div>
+    </div>
+
+    <nav class="filters">
+      <div class="nav-label">Risk segment</div>
+      <div class="filter-btn active" data-band="">
+        <span><span class="dot all"></span>All customers</span>
+        <span class="count" id="count-all">—</span>
+      </div>
+      <div class="filter-btn" data-band="high">
+        <span><span class="dot high"></span>High risk</span>
+        <span class="count" id="count-high">—</span>
+      </div>
+      <div class="filter-btn" data-band="medium">
+        <span><span class="dot medium"></span>Medium risk</span>
+        <span class="count" id="count-medium">—</span>
+      </div>
+      <div class="filter-btn" data-band="low">
+        <span><span class="dot low"></span>Low risk</span>
+        <span class="count" id="count-low">—</span>
+      </div>
+    </nav>
+
+    <div class="api-config">
+      API endpoint
+      <input id="apiBaseInput" spellcheck="false" />
+    </div>
+
+    <div class="status-pill">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Connecting…</span>
+    </div>
+  </aside>
+
+  <main>
+    <header>
+      <div>
+        <h1>Who's about to leave, and what are we doing about it</h1>
+        <p>Churn risk is scored by the trained model on every customer. Send a retention offer straight to their app.</p>
+      </div>
+      <div class="search-box">
+        <span class="mono" style="color:var(--text-faint)">⌕</span>
+        <input id="searchInput" placeholder="Search customer ID…" />
+      </div>
+    </header>
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="label">Total customers</div><div class="value" id="kpiTotal">—</div><div class="sub">scored by model</div></div>
+      <div class="kpi"><div class="label">High risk</div><div class="value high" id="kpiHigh">—</div><div class="sub" id="kpiHighPct">—</div></div>
+      <div class="kpi"><div class="label">Offers sent</div><div class="value" id="kpiSent">—</div><div class="sub">all time</div></div>
+      <div class="kpi"><div class="label">Redeemed</div><div class="value" id="kpiRedeemed">—</div><div class="sub" id="kpiRedeemRate">—</div></div>
+    </div>
+
+    <div class="chart-row">
+      <div class="panel">
+        <h3>Risk distribution</h3>
+        <div class="chart-wrap"><canvas id="riskChart"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Avg. revenue by risk band</h3>
+        <div class="chart-wrap"><canvas id="revChart"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>What drives the model's prediction</h3>
+        <div class="chart-wrap"><canvas id="featChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="customers">Customers</div>
+      <div class="tab" data-tab="offers">Sent offers</div>
+    </div>
+
+    <div id="customersView" class="table-panel">
+      <div class="table-header">
+        <strong style="font-size:13.5px;">Ranked by churn risk</strong>
+        <span id="tableCount" style="font-size:12px;color:var(--text-faint);"></span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Signal</th><th>Customer</th><th>Risk</th><th>Tenure</th><th>Revenue</th><th>Area</th><th></th></tr>
+        </thead>
+        <tbody id="customerRows"></tbody>
+      </table>
+      <div class="pager">
+        <button class="btn ghost" id="prevPage">← Prev</button>
+        <span id="pageLabel">Page 1</span>
+        <button class="btn ghost" id="nextPage">Next →</button>
+      </div>
+    </div>
+
+    <div id="offersView" class="table-panel" style="display:none;">
+      <div class="table-header"><strong style="font-size:13.5px;">All offers sent</strong></div>
+      <table>
+        <thead><tr><th>Customer</th><th>Offer</th><th>Message</th><th>Status</th><th>Sent</th></tr></thead>
+        <tbody id="offerRows"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<div class="overlay" id="drawerOverlay">
+  <div class="drawer">
+    <div class="drawer-head">
+      <div>
+        <div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;">Customer</div>
+        <div class="display" id="drawerId" style="font-size:20px;font-weight:700;"></div>
+      </div>
+      <button class="close-btn" id="closeDrawer">×</button>
+    </div>
+
+    <div id="drawerBadge"></div>
+
+    <div class="field-grid" id="drawerFields"></div>
+
+    <div>
+      <div class="nav-label" style="margin-left:0;">Send retention offer</div>
+      <div class="offer-presets" id="offerPresets"></div>
+      <textarea id="offerMessage" placeholder="Message the customer will see…"></textarea>
+      <button class="btn" id="sendOfferBtn" style="margin-top:10px;width:100%;">Send offer</button>
+    </div>
+
+    <div>
+      <div class="nav-label" style="margin-left:0;">Offer history for this customer</div>
+      <div class="offer-log" id="drawerOfferLog"><div class="empty">No offers sent yet.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const storedApiBase = localStorage.getItem('signal-api-base');
+const defaultApiBase = (location.protocol === 'file:')
+  ? 'http://localhost:8000'
+  : `${location.protocol}//${location.hostname}:8000`;
+let API_BASE = storedApiBase || defaultApiBase;
+
+function saveApiBase(value) {
+  API_BASE = value.replace(/\/$/, '');
+  localStorage.setItem('signal-api-base', API_BASE);
+  refreshAll();
+}
+
+const apiBaseInput = document.getElementById('apiBaseInput');
+apiBaseInput.value = API_BASE;
+apiBaseInput.addEventListener('change', () => saveApiBase(apiBaseInput.value));
+
+let state = { band: '', search: '', page: 0, limit: 20, activeCustomer: null, selectedPreset: null };
+
+const OFFER_PRESETS = [
+  { type: '10% off next bill', discount: '10%', msg: "We'd hate to see you go — here's 10% off your next bill." },
+  { type: 'Free 5GB data boost', discount: '5GB', msg: "On us: an extra 5GB of data added to your plan this month." },
+  { type: '$10 redeem voucher', discount: '$10', msg: "Here's a $10 voucher as a thank-you for being with us." },
+  { type: 'Custom message', discount: null, msg: '' },
+];
+
+function fmtMoney(v){ return v==null ? '—' : `$${Number(v).toFixed(2)}`; }
+function fmtPct(v){ return `${Math.round(v*100)}%`; }
+function bandOf(v){ return v>=0.66 ? 'high' : v>=0.33 ? 'medium' : 'low'; }
+
+async function api(path, opts={}){
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: {'Content-Type':'application/json'}, ...opts
+  });
+  if(!res.ok){ throw new Error(`${res.status} ${await res.text()}`); }
+  return res.json();
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+async function checkHealth(){
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  try{
+    const h = await api('/health');
+    dot.className = 'status-dot ok';
+    text.textContent = h.model_loaded ? 'Connected · model loaded' : 'Connected · model NOT trained';
+  }catch(e){
+    dot.className = 'status-dot down';
+    text.textContent = 'Cannot reach API';
+  }
+}
+
+let riskChart, revChart, featChart;
+async function loadCharts(){
+  const [charts, feats] = await Promise.all([api('/charts'), api('/feature-importance')]);
+  const bandCounts = charts.risk_band_counts || {};
+  const revByBand = charts.avg_revenue_by_band || {};
+
+  document.getElementById('count-high').textContent = bandCounts.high ?? 0;
+  document.getElementById('count-medium').textContent = bandCounts.medium ?? 0;
+  document.getElementById('count-low').textContent = bandCounts.low ?? 0;
+  const total = (bandCounts.high||0)+(bandCounts.medium||0)+(bandCounts.low||0);
+  document.getElementById('count-all').textContent = total;
+  document.getElementById('kpiTotal').textContent = total.toLocaleString();
+  document.getElementById('kpiHigh').textContent = (bandCounts.high||0).toLocaleString();
+  document.getElementById('kpiHighPct').textContent = total ? `${((bandCounts.high/total)*100).toFixed(1)}% of base` : '';
+
+  const ctx1 = document.getElementById('riskChart');
+  riskChart?.destroy();
+  riskChart = new Chart(ctx1, {
+    type:'doughnut',
+    data:{ labels:['High','Medium','Low'],
+      datasets:[{ data:[bandCounts.high||0, bandCounts.medium||0, bandCounts.low||0],
+        backgroundColor:['#e8604a','#e8a23c','#45b58c'], borderWidth:0 }]},
+    options:{ plugins:{legend:{position:'bottom', labels:{color:'#8b93a3', boxWidth:10, font:{size:11}}}}, cutout:'65%' }
+  });
+
+  const ctx2 = document.getElementById('revChart');
+  revChart?.destroy();
+  revChart = new Chart(ctx2, {
+    type:'bar',
+    data:{ labels:['High','Medium','Low'],
+      datasets:[{ data:[revByBand.high||0, revByBand.medium||0, revByBand.low||0],
+        backgroundColor:['#e8604a','#e8a23c','#45b58c'], borderRadius:4 }]},
+    options:{ plugins:{legend:{display:false}},
+      scales:{ x:{ ticks:{color:'#8b93a3'}, grid:{display:false} }, y:{ ticks:{color:'#8b93a3'}, grid:{color:'#2a3040'} } } }
+  });
+
+  const top = feats.top_features.slice(0,8).reverse();
+  const ctx3 = document.getElementById('featChart');
+  featChart?.destroy();
+  featChart = new Chart(ctx3, {
+    type:'bar',
+    data:{ labels: top.map(f=>f.feature),
+      datasets:[{ data: top.map(f=>f.importance), backgroundColor:'#5b8def', borderRadius:4 }]},
+    options:{ indexAxis:'y', plugins:{legend:{display:false}},
+      scales:{ x:{ ticks:{color:'#8b93a3'}, grid:{color:'#2a3040'} }, y:{ ticks:{color:'#8b93a3', font:{size:10.5}}, grid:{display:false} } } }
+  });
+}
+
+async function loadOfferKpis(){
+  const offers = await api('/offers?limit=1000');
+  const sent = offers.length;
+  const redeemed = offers.filter(o=>o.status==='redeemed').length;
+  document.getElementById('kpiSent').textContent = sent;
+  document.getElementById('kpiRedeemed').textContent = redeemed;
+  document.getElementById('kpiRedeemRate').textContent = sent ? `${Math.round(redeemed/sent*100)}% redemption` : 'no offers yet';
+  return offers;
+}
+
+function signalHtml(band){
+  return `<span class="signal ${band}"><i></i><i></i><i></i><i></i></span>`;
+}
+
+async function loadCustomers(){
+  const params = new URLSearchParams({ limit: state.limit, offset: state.page*state.limit });
+  if(state.band) params.set('risk_band', state.band);
+  if(state.search) params.set('search', state.search);
+  const data = await api(`/customers?${params}`);
+  const tbody = document.getElementById('customerRows');
+  document.getElementById('tableCount').textContent = `${data.total.toLocaleString()} customers`;
+  document.getElementById('pageLabel').textContent = `Page ${state.page+1} of ${Math.max(1, Math.ceil(data.total/state.limit))}`;
+
+  if(data.customers.length === 0){
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty">No customers match this filter.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.customers.map(c => `
+    <tr data-id="${c.customer_id}">
+      <td>${signalHtml(c.risk_band)}</td>
+      <td class="cid">#${c.customer_id}</td>
+      <td><span class="risk-pct ${c.risk_band}">${fmtPct(c.risk_score)}</span></td>
+      <td>${c.months ?? '—'} mo</td>
+      <td>${fmtMoney(c.totrev)}</td>
+      <td style="color:var(--text-dim);font-size:12.5px;">${c.area ?? '—'}</td>
+      <td><button class="btn ghost open-drawer" data-id="${c.customer_id}">Review →</button></td>
+    </tr>`).join('');
+
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    tr.addEventListener('click', ()=> openDrawer(tr.dataset.id));
+  });
+}
+
+async function loadOfferTable(){
+  const offers = await loadOfferKpis();
+  const tbody = document.getElementById('offerRows');
+  if(offers.length===0){
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty">No offers sent yet — open a customer and send one.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = offers.map(o=>`
+    <tr>
+      <td class="cid">#${o.customer_id}</td>
+      <td>${o.offer_type}</td>
+      <td style="color:var(--text-dim);font-size:12.5px;max-width:280px;">${o.message}</td>
+      <td><span class="badge ${o.status}">${o.status}</span></td>
+      <td class="mono" style="font-size:11.5px;color:var(--text-faint);">${new Date(o.created_at).toLocaleString()}</td>
+    </tr>`).join('');
+}
+
+async function openDrawer(customerId){
+  state.activeCustomer = customerId;
+  const c = await api(`/customers/${customerId}`);
+  document.getElementById('drawerId').textContent = `#${c.customer_id}`;
+  document.getElementById('drawerBadge').innerHTML =
+    `<span class="badge ${c.risk_band}">${c.risk_band} risk · ${fmtPct(c.risk_score)}</span>`;
+  document.getElementById('drawerFields').innerHTML = `
+    <div class="k">Tenure</div><div class="v">${c.months ?? '—'} months</div>
+    <div class="k">Total revenue</div><div class="v">${fmtMoney(c.totrev)}</div>
+    <div class="k">Avg. revenue/mo</div><div class="v">${fmtMoney(c.avgrev)}</div>
+    <div class="k">Avg. minutes/mo</div><div class="v">${c.avgmou ?? '—'}</div>
+    <div class="k">Handset age</div><div class="v">${c.eqpdays ?? '—'} days</div>
+    <div class="k">Active lines</div><div class="v">${c.actvsubs ?? '—'}</div>
+    <div class="k">Area</div><div class="v">${c.area ?? '—'}</div>
+    <div class="k">Care calls (mo)</div><div class="v">${c.custcare_Mean ?? '—'}</div>
+  `;
+  renderPresets();
+  document.getElementById('offerMessage').value = '';
+  state.selectedPreset = null;
+  await renderOfferLog(customerId);
+  document.getElementById('drawerOverlay').classList.add('open');
+}
+
+function renderPresets(){
+  const wrap = document.getElementById('offerPresets');
+  wrap.innerHTML = OFFER_PRESETS.map((p,i)=>`
+    <div class="preset" data-i="${i}">
+      <div class="t">${p.type}</div>
+      ${p.discount ? `<div class="d">Value: ${p.discount}</div>` : `<div class="d">Write your own message below</div>`}
+    </div>`).join('');
+  wrap.querySelectorAll('.preset').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      wrap.querySelectorAll('.preset').forEach(p=>p.classList.remove('selected'));
+      el.classList.add('selected');
+      const preset = OFFER_PRESETS[el.dataset.i];
+      state.selectedPreset = preset;
+      document.getElementById('offerMessage').value = preset.msg;
+    });
+  });
+}
+
+async function renderOfferLog(customerId){
+  const offers = await api(`/offers/customer/${customerId}`);
+  const log = document.getElementById('drawerOfferLog');
+  if(offers.length===0){ log.innerHTML = `<div class="empty">No offers sent yet.</div>`; return; }
+  log.innerHTML = offers.map(o=>`
+    <div class="item">
+      <div class="top"><strong>${o.offer_type}</strong><span class="badge ${o.status}">${o.status}</span></div>
+      <div style="color:var(--text-dim);">${o.message}</div>
+    </div>`).join('');
+}
+
+document.getElementById('closeDrawer').addEventListener('click', ()=>{
+  document.getElementById('drawerOverlay').classList.remove('open');
+});
+document.getElementById('drawerOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'drawerOverlay') e.currentTarget.classList.remove('open');
+});
+
+document.getElementById('sendOfferBtn').addEventListener('click', async ()=>{
+  const msg = document.getElementById('offerMessage').value.trim();
+  const offerType = state.selectedPreset ? state.selectedPreset.type : 'Custom offer';
+  if(!msg){ toast('Write a message first.'); return; }
+  const btn = document.getElementById('sendOfferBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try{
+    await api('/offers', { method:'POST', body: JSON.stringify({
+      customer_id: Number(state.activeCustomer),
+      offer_type: offerType,
+      message: msg,
+      discount_value: state.selectedPreset?.discount || null,
+    })});
+    toast(`Offer sent to #${state.activeCustomer} — it will appear in their app.`);
+    await renderOfferLog(state.activeCustomer);
+    await loadOfferKpis();
+  }catch(e){
+    toast('Could not send offer — check the API connection.');
+  }
+  btn.disabled = false; btn.textContent = 'Send offer';
+});
+
+// ---------- filters / search / pagination ----------
+document.querySelectorAll('.filter-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    state.band = btn.dataset.band; state.page = 0;
+    loadCustomers();
+  });
+});
+let searchDebounce;
+document.getElementById('searchInput').addEventListener('input', (e)=>{
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(()=>{ state.search = e.target.value.trim(); state.page = 0; loadCustomers(); }, 300);
+});
+document.getElementById('prevPage').addEventListener('click', ()=>{ if(state.page>0){ state.page--; loadCustomers(); }});
+document.getElementById('nextPage').addEventListener('click', ()=>{ state.page++; loadCustomers(); });
+
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    const isCustomers = tab.dataset.tab === 'customers';
+    document.getElementById('customersView').style.display = isCustomers ? 'block' : 'none';
+    document.getElementById('offersView').style.display = isCustomers ? 'none' : 'block';
+    if(!isCustomers) loadOfferTable();
+  });
+});
+
+async function refreshAll(){
+  await checkHealth();
+  try{
+    await loadCharts();
+    await loadCustomers();
+    await loadOfferKpis();
+  }catch(e){ console.error(e); }
+}
+
+refreshAll();
+setInterval(checkHealth, 8000);
+setInterval(()=>{ if(document.getElementById('offersView').style.display !== 'none') loadOfferTable(); }, 5000);
+</script>
+</body>
+</html>
